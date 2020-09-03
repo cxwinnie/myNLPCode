@@ -18,7 +18,7 @@ class PCNNEncoder(BaseEncoder):
                  dropout=0.0,
                  activation_fcuntion=F.relu,
                  mask_entity=False):
-        super.__init__(word2id, word2vec, max_length, hidden_size, position_size, blank_padding, mask_entity)
+        super().__init__(word2id, word2vec, max_length, hidden_size, position_size, blank_padding, mask_entity)
 
         self.drop = nn.Dropout(dropout)
         self.kernel_size = kernel_size
@@ -69,7 +69,7 @@ class PCNNEncoder(BaseEncoder):
                 while len(pos2) < self.max_length:
                     pos2.append(0)
 
-            torch.tensor(index_tokens).long().unsqueeze(0)
+            index_tokens = torch.tensor(index_tokens).long().unsqueeze(0)
             pos1 = torch.tensor(pos1).long().unsqueeze(0)
             pos2 = torch.tensor(pos2).long().unsqueeze(0)
 
@@ -96,7 +96,7 @@ class PCNNEncoder(BaseEncoder):
             seqs[1].append(pos1)
             seqs[2].append(pos2)
             seqs[3].append(mask)
-        for i in len(seqs):
+        for i in range(len(seqs)):
             seqs[i] = torch.cat(seqs[i], 0)
         return seqs
 
@@ -107,6 +107,7 @@ class PCNNEncoder(BaseEncoder):
                        self.pos2_embedding(pos2)], 2)
         x = x.transpose(1, 2)
         x = self.conv(x)
+        mask = self.mask_embedding(mask).transpose(1, 2)
         pool1 = self.pool(self.act(x + self._minus * mask[:, 0:1, :]))
         pool2 = self.pool(self.act(x + self._minus * mask[:, 0:1, :]))
         pool3 = self.pool(self.act(x + self._minus * mask[:, 0:1, :]))

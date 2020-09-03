@@ -8,7 +8,7 @@ import sklearn
 class BagREDataset(data.Dataset):
 
     def __init__(self, path, rel2id, tokenize, entpair_as_bag=False, bag_size=0, mode=None):
-        super.__init__()
+        super().__init__()
         self.tokenize = tokenize
         self.rel2id = rel2id
         self.entpair_as_bag = entpair_as_bag
@@ -41,7 +41,7 @@ class BagREDataset(data.Dataset):
                 self.bag_scope.append([])
                 self.bag_name.append(name)
             self.bag_scope[self.name2id[name]].append(idx)
-            self.weight[self.rel2id[item['rel']]] += 1.0
+            self.weight[item['rel']] += 1.0
         self.weight = 1.0 / (self.weight ** 0.05)
         self.weight = torch.from_numpy(self.weight)
 
@@ -55,10 +55,10 @@ class BagREDataset(data.Dataset):
             if self.bag_size <= len(bag['sents']):
                 resize_bag = random.sample(bag['sents'], self.bag_size)
             else:
-                resize_bag = bag + list(np.random.choice(bag['sents'], self.bag_size - len(bag)))
+                resize_bag = bag['sents'] + list(np.random.choice(bag['sents'], self.bag_size - len(bag['sents'])))
             bag['sents'] = resize_bag
 
-        rel = self.rel2id[self.data[bag[0]]['rel']]
+        rel = bag['rel']
         seqs = list(self.tokenize(bag))
         return [rel, self.bag_name[index], len(bag['sents'])] + seqs
 

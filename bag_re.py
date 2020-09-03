@@ -109,7 +109,7 @@ class BagRE(nn.Module):
                 bag_name = data[1]
                 scope = data[1]
                 args = data[3:]
-                logits = self.model(label, scope, *args, )
+                logits = self.model(label, scope, *args, bag_size=10)
                 loss = self.criterion(logits, label)
                 score, pred = logits.max(-1)
                 acc = float((pred == label).long().sum()) / label.size(0)

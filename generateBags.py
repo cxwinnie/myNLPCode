@@ -20,7 +20,7 @@ with open('dataset/riedel_train.json') as f:
         train_data[id]['subId'] = data['sub_id']
         train_data[id]['obj'] = data['obj']
         train_data[id]['objId'] = data['obj_id']
-        train_data[id]['rels'][rel2id.get(data['rel'], 'NA')].append(data['sent'])
+        train_data[id]['rels'][rel2id.get(data['rel'], rel2id.get('NA'))].append(data['rsent'])
 
 print('Constructing test bags...')
 with open('dataset/riedel_test.json') as f:
@@ -31,7 +31,7 @@ with open('dataset/riedel_test.json') as f:
         test_data[id]['subId'] = data['sub_id']
         test_data[id]['obj'] = data['obj']
         test_data[id]['objId'] = data['obj_id']
-        test_data[id]['rels'][rel2id.get(data['rel'], 'NA')].append(data['sent'])
+        test_data[id]['rels'][rel2id.get(data['rel'], rel2id.get('NA'))].append(data['rsent'])
 
 print("create train_bags.json")
 with open('dataset/riedel_train_bag.json', 'w') as f:
@@ -66,7 +66,7 @@ vecs = []
 with open('dataset/glove.6B.50d.txt', encoding='utf-8') as f:
     for line in f:
         line = line.split()
-        vec = list(map(float, line[1:-1]))
+        vec = list(map(float, line[1:]))
         vecs.append(vec)
         word_list.append(line[0])
 word2id = {j: i for i, j in enumerate(word_list)}

@@ -16,7 +16,7 @@ class BaseEncoder(nn.Module):
                  blank_padding=True,
                  mask_entity=False
                  ):
-        super.__init__()
+        super().__init__()
         self.word2id = word2id
         self.max_length = max_length
         self.word_num = len(word2id)

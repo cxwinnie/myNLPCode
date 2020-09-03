@@ -15,7 +15,8 @@ np.random.seed(opt.seed)
 rel2id = json.load(open('dataset/riedel_relation2id.json'))
 id2word = json.load(open('dataset/id2word.json'))
 word2id = {j: int(i) for i, j in id2word.items()}
-word2v = np.load(open('dataset/w2v.npy'))
+word2v = np.load('dataset/w2v.npy')
+word2v = word2v.astype(np.float32)
 ckpt = 'ckpt/nyt10_pcnn_att.pth'
 
 if opt.use_gpu:

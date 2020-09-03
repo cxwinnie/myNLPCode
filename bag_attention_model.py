@@ -18,14 +18,12 @@ class BagAttention(BagRE):
 
     def forward(self, label, scope, token, pos1, pos2, mask=None, train=True, bag_size=0):
 
-        if bag_size > 0:
-            token = token.view(-1, token.size(-1))
-            pos1 = pos1.view(-1, pos1.size(-1))
-            pos2 = pos2.view(-1, pos2.size(-1))
+        token = token.view(-1, token.size(-1))
+        pos1 = pos1.view(-1, pos1.size(-1))
+        pos2 = pos2.view(-1, pos2.size(-1))
 
-        if mask is not None:
-            mask = mask.view(-1, mask.size(-1))
-            rep = self.sentence_encoder(token, pos1, pos2, mask)
+        mask = mask.view(-1, mask.size(-1))
+        rep = self.sentence_encoder(token, pos1, pos2, mask)
 
         if train:
             batch_size = label.size(0)

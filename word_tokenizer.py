@@ -2,7 +2,7 @@
 
 class WordTokenizer(object):
 
-    def __int__(self, vocab=None, unk_token='[UNK]'):
+    def __init__(self, vocab=None, unk_token='[UNK]'):
         self.vocab = vocab
         self.inv_vocab = {v: k for k, v in self.vocab.items()}
         self.unk_token = unk_token
