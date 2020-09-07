@@ -1,5 +1,6 @@
 # coding: utf-8 
 import json
+import torch
 
 str1 = 'Sen. Charles E. Schumer called on federal safety officials yesterday to reopen their investigation into the fatal crash of a passenger jet in Belle Harbor , Queens 1 , because equipment failure , not pilot error , might have been the cause .'
 print(str1.find('Queens 1'))
@@ -20,6 +21,13 @@ for k,v in store.items():
         print(k)
 '''
 
+"""
 rel2id = json.loads(open('./dataset/riedel_relation2id.json').read())
 id2rel = dict([(v, k) for k, v in rel2id.items()])
 print(rel2id.get('/base/locations/countries/states_provinces_within',rel2id.get('NA')))
+"""
+label = torch.tensor([0, 0, 0, 5, 3, 0, 4, 0, 0, 0])
+pre = torch.tensor([0, 0, 0, 1, 3, 0, 2, 0, 0, 0])
+pos_total = (label != 0).long().sum()
+pos_correct = ((pre == label).long() * (label != 0)).sum()
+print(pos_total,pos_correct)

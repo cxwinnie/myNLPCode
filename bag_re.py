@@ -1,4 +1,4 @@
-# coding: utf-8 
+# coding: utf-8
 
 from torch import nn, optim
 from data_loader import *
@@ -21,11 +21,9 @@ class BagRE(nn.Module):
                  lr=0.1,
                  weight_decay=1e-5,
                  opt='sgd',
-                 bag_size=0,
                  loss_weight=False):
         super().__init__()
         self.max_epoch = max_epoch
-        self.bag_size = bag_size
         if train_path is not None:
             self.train_loader = BagRELoader(
                 train_path,
@@ -33,22 +31,20 @@ class BagRE(nn.Module):
                 model.sentence_encoder.tokenize,
                 batch_size,
                 True,
-                bag_size=bag_size,
                 entpair_as_bag=False
             )
 
         if test_path is not None:
-            self.train_loader = BagRELoader(
-                train_path,
+            self.test_loader = BagRELoader(
+                test_path,
                 model.rel2id,
                 model.sentence_encoder.tokenize,
                 batch_size,
                 False,
-                bag_size=bag_size,
                 entpair_as_bag=False
             )
 
-        self.model = nn.DataParallel(model)
+        self.model = nn.DataParallel(model,device_ids=[0])
 
         if loss_weight:
             self.criterion = nn.CrossEntropyLoss(weight=self.train_loader.dataset.weight)
@@ -92,24 +88,19 @@ class BagRE(nn.Module):
         best_auc = 0
         for epoch in range(self.max_epoch):
             # train
-            self.train()
+            self.model.train()
             avg_loss = AverageMeter()
             avg_acc = AverageMeter()
             avg_pos_acc = AverageMeter()
             print("=== Epoch %d train ===" % epoch)
             t = tqdm(self.train_loader)
             for iter, data in enumerate(t):
-                if torch.cuda.is_available():
-                    for i in range(len(data)):
-                        try:
-                            data[i] = data[i].cuda()
-                        except:
-                            pass
                 label = data[0]
+                label = label.cuda()
                 bag_name = data[1]
-                scope = data[1]
+                scope = data[2]
                 args = data[3:]
-                logits = self.model(label, scope, *args, bag_size=10)
+                logits = self.model(label, scope, *args,train=True)
                 loss = self.criterion(logits, label)
                 score, pred = logits.max(-1)
                 acc = float((pred == label).long().sum()) / label.size(0)
@@ -127,11 +118,11 @@ class BagRE(nn.Module):
 
                 loss.backward()
                 self.optimizer.step()
-                self.optimizer.zero_grag()
+                self.model.zero_grad()
 
             # Val
             print("=== Epoch %d val ===" % epoch)
-            result = self.eval_model(self.val_loader)
+            result = self.eval_model(self.test_loader)
             print("auc: %.4f" % result['auc'])
             print("f1: %.4f" % (result['f1']))
             if result['auc'] > best_auc:
@@ -142,6 +133,9 @@ class BagRE(nn.Module):
 
     def eval_model(self, eval_loader):
         self.model.eval()
+        pred_y = []
+        true_y = []
+        pred_p = []
         with torch.no_grad():
             t = tqdm(eval_loader)
             pred_result = []
@@ -153,21 +147,15 @@ class BagRE(nn.Module):
                         except:
                             pass
                 label = data[0]
-                bag_name = data[1]
                 scope = data[2]
                 args = data[3:]
                 logits = self.model(None, scope, *args, train=False)
-                logits = logits.cpu().numpy()
-                for i in range(len(logits)):
-                    for relid in range(self.model.module.num_rel):
-                        if self.model.module.id2rel[relid] != 'NA':
-                            pred_result.append({
-                                'entpair': bag_name[i][:2],
-                                'relation': self.model.module.id2rel[relid],
-                                'score': logits[i][relid]
-                            })
-            result = eval_loader.dataset.eval(pred_result)
+                res = torch.max(logits,1)
+                pred_y.extend(res[1].data.cpu().numpy().tolist())
+                pred_p.extend(res[0].data.cpu().numpy().tolist())
+                true_y.extend(label.data.cpu().numpy().tolist())
 
+            result = eval_loader.dataset.eval(true_y,pred_y,pred_p)
             prec, rec = result['prec'], result['rec']
             plt.ylim([0.3, 1.0])  # y的范围从0.3到1
             plt.xlim([0.0, 0.45])  # x的范围从0到0.45

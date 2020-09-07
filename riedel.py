@@ -34,19 +34,18 @@ sentence_encoder = PCNNEncoder(
     dropout=0.5
 )
 
-model = BagAttention(sentence_encoder, len(rel2id), rel2id)
+model = BagAttention(sentence_encoder, len(rel2id), rel2id, dropout=0.5)
 
 framework = BagRE(
     train_path='dataset/riedel_train_bag.json',
     test_path='dataset/riedel_test_bag.json',
     model = model,
     ckpt=ckpt,
-    batch_size=160,
+    batch_size=128,
     max_epoch=60,
-    lr=0.5,
+    lr=0.01,
     weight_decay=0,
-    opt='sgd',
-    bag_size=10
+    opt='adamw',
 )
 
 # Train the model

@@ -4,15 +4,16 @@ import torch.utils.data as data
 import numpy as np
 import random
 import sklearn
+from sklearn import metrics
+
 
 class BagREDataset(data.Dataset):
 
-    def __init__(self, path, rel2id, tokenize, entpair_as_bag=False, bag_size=0, mode=None):
+    def __init__(self, path, rel2id, tokenize, entpair_as_bag=False, mode=None):
         super().__init__()
         self.tokenize = tokenize
         self.rel2id = rel2id
         self.entpair_as_bag = entpair_as_bag
-        self.bag_size = bag_size
 
         f = open(path)
         self.data = []
@@ -51,13 +52,6 @@ class BagREDataset(data.Dataset):
     def __getitem__(self, index):
         bag_index = self.bag_scope[index]
         bag = self.data[bag_index[0]]
-        if self.bag_size > 0:
-            if self.bag_size <= len(bag['sents']):
-                resize_bag = random.sample(bag['sents'], self.bag_size)
-            else:
-                resize_bag = bag['sents'] + list(np.random.choice(bag['sents'], self.bag_size - len(bag['sents'])))
-            bag['sents'] = resize_bag
-
         rel = bag['rel']
         seqs = list(self.tokenize(bag))
         return [rel, self.bag_name[index], len(bag['sents'])] + seqs
@@ -67,7 +61,10 @@ class BagREDataset(data.Dataset):
         label, bag_name, count = data[:3]
         seqs = data[3:]
         for i in range(len(seqs)):
-            seqs[i] = torch.stack(seqs[i], 0)
+            tmp = []
+            for emb in seqs[i]:
+                tmp.append(emb)
+            seqs[i] = tmp
         scope = []
         start = 0
         for c in count:
@@ -76,29 +73,55 @@ class BagREDataset(data.Dataset):
         label = torch.tensor(label).long()
         return [label, bag_name, scope] + seqs
 
-    def eval(self, pred_result):
-        sorted_pred_result = sorted(pred_result, key=lambda x: x['score'], reverse=True)
-        prec = []
-        rec = []
-        correct = 0
-        total = len(self.facts)
-        for i,item in enumerate(sorted_pred_result):
-            if(item['entpair'][0], item['entpair'][1], item['relation']) in self.facts:
-                correct += 1
-            prec.append(float(correct)/float(i+1))
-            rec.append(float(correct)/float(total))
-        auc = sklearn.metrics.auc(x=rec,y=prec)
-        np_prec = np.array(prec)
-        np_rec = np.array(rec)
-        f1 = (2 * np_rec * np_prec/(np_prec + np_rec + 1e-20)).max()
-        mean_prec = np_prec.mean()
-        return {'prec': np_prec, 'rec': np_rec, 'mean_prec': mean_prec, 'f1': f1, 'auc': auc}
+    def eval(self, true_y, pred_y, pred_p):
+        pos_num = len([i for i in true_y if i > 0])
+        index = np.argsort(pred_p)[::-1]
 
+        tp = 0
+        fn = 0
+        fp = 0
+
+        all_pre = [0]
+        all_rec = [0]
+
+        for idx in range(len(index)):
+            i = true_y[index[idx]]
+            j = pred_y[index[idx]]
+            if i == 0:
+                if j > 0:
+                    fp += 1
+            else:
+                if j == 0:
+                    fn += 1
+                else:
+                    if i == j:
+                        tp += 1
+
+            if fp + tp == 0:
+                precision = 1
+            else:
+                precision = float(tp) / (fp + tp)
+
+            recall = float(tp) / (pos_num+1e-20)
+
+            if precision != all_pre[-1] or recall != all_rec[-1]:
+                all_pre.append(precision)
+                all_rec.append(recall)
+
+        auc = metrics.auc(x=all_rec, y=all_pre)
+
+        np_prec = np.array(all_pre[1:])
+        np_rec = np.array(all_rec[1:])
+
+        f1 = (2 * np_prec * np_rec / (np_prec + np_rec + 1e-20)).max()
+        mean_prec = np_prec.mean()
+
+        return {'prec': np_prec, 'rec': np_rec, 'mean_prec': mean_prec, 'f1': f1, 'auc': auc}
 
 def BagRELoader(path, rel2id, tokenize, batch_size,
                 shuffle, entpair_as_bag=False, bag_size=0, num_workers=0):
     collate_fn = BagREDataset.collate_bag_size_fn
-    dataset = BagREDataset(path,rel2id,tokenize,entpair_as_bag=entpair_as_bag,bag_size=bag_size)
+    dataset = BagREDataset(path, rel2id, tokenize, entpair_as_bag=entpair_as_bag)
     data_loader = data.DataLoader(
         dataset=dataset,
         batch_size=batch_size,

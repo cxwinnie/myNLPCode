@@ -92,27 +92,39 @@ class PCNNEncoder(BaseEncoder):
                 seqs = []
                 for i in range(4):
                     seqs.append([])
+            index_tokens = index_tokens[:self.max_length]
+            pos1 = pos1[:, :self.max_length]
+            pos2 = pos2[:, :self.max_length]
+            mask = mask[:, :self.max_length]
+            index_tokens = torch.as_tensor(index_tokens).long()
+            pos1 = torch.as_tensor(pos1).long()
+            pos2 = torch.as_tensor(pos2).long()
+            mask = torch.as_tensor(mask).long()
             seqs[0].append(index_tokens)
             seqs[1].append(pos1)
             seqs[2].append(pos2)
             seqs[3].append(mask)
         for i in range(len(seqs)):
-            seqs[i] = torch.cat(seqs[i], 0)
+            seqs[i] = torch.cat(seqs[i], 0)  # 如果一个句子中有多个sentence，那么这段代码的功能就是将多个句子的同一类embedding放在一个二维tensor中
         return seqs
 
-    def forward(self, token, pos1, pos2, mask):
-
-        x = torch.cat([self.word_embedding(token),
-                       self.pos1_embedding(pos1),
-                       self.pos2_embedding(pos2)], 2)
-        x = x.transpose(1, 2)
-        x = self.conv(x)
-        mask = self.mask_embedding(mask).transpose(1, 2)
-        pool1 = self.pool(self.act(x + self._minus * mask[:, 0:1, :]))
-        pool2 = self.pool(self.act(x + self._minus * mask[:, 0:1, :]))
-        pool3 = self.pool(self.act(x + self._minus * mask[:, 0:1, :]))
-        x = torch.cat([pool1, pool2, pool3], 1)
-        x = x.squeeze(2)
-        x = self.drop(x)
-
-        return x
+    def forward(self, scope, token, pos1, pos2, mask):
+        bag_features = []
+        for i in range(len(scope)):
+            token[i] = token[i].cuda()
+            pos1[i] = pos1[i].cuda()
+            pos2[i] = pos2[i].cuda()
+            mask[i] = mask[i].cuda()
+            x = torch.cat([self.word_embedding(token[i]),
+                           self.pos1_embedding(pos1[i]),
+                           self.pos2_embedding(pos2[i])], 2)
+            x = x.transpose(1, 2)
+            x = self.conv(x)
+            mask[i] = 1 - self.mask_embedding(mask[i]).transpose(1, 2)
+            pool1 = self.pool(self.act(x + self._minus * mask[i][:, 0:1, :]))
+            pool2 = self.pool(self.act(x + self._minus * mask[i][:, 1:2, :]))
+            pool3 = self.pool(self.act(x + self._minus * mask[i][:, 2:3, :]))
+            x = torch.cat([pool1, pool2, pool3], 1)
+            x = x.squeeze(2)
+            bag_features.append(x)
+        return bag_features
