@@ -45,7 +45,7 @@ framework = BagRE(
     max_epoch=60,
     lr=0.01,
     weight_decay=0,
-    opt='adamw',
+    opt='sgd',
 )
 
 # Train the model

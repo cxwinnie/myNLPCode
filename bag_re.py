@@ -55,8 +55,8 @@ class BagRE(nn.Module):
         self.lr = lr
         if opt == 'sgd':
             self.optimizer = optim.SGD(params, lr, weight_decay=weight_decay)
-        elif opt == 'adamw':
-            self.optimizer = optim.AdamW(params, lr, weight_decay=weight_decay)
+        elif opt == 'adam':
+            self.optimizer = optim.Adam(params, lr, weight_decay=weight_decay)
         elif opt == 'adamw':
             from transformers import AdamW
             params = list(self.named_parameters())
