@@ -35,6 +35,9 @@ class PCNNEncoder(BaseEncoder):
         self._minus = -100
         self.hidden_size *= 3  # 由于有hidden_size个filter，由三段最大化可知最后的长度为hidden_size*3
 
+        nn.init.xavier_uniform_(self.conv.weight)
+        nn.init.uniform_(self.conv.bias)
+
     def tokenize(self, bag):
 
         sentencts = bag['sents']
